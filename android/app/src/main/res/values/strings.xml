@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">creator-coach</string>
+    <string name="title_activity_main">creator-coach</string>
+    <string name="package_name">com.yourname.creatorcoach</string>
+    <string name="custom_url_scheme">com.yourname.creatorcoach</string>
+</resources>
