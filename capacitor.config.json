@@ -1,5 +1,9 @@
 {
   "appId": "com.yourname.creatorcoach",
   "appName": "creator-coach",
-  "webDir": "dist"
+  "webDir": "dist",
+  "server": {
+    "url": "https://ideal-engine-one.vercel.app?platform=app",
+    "cleartext": true
+  }
 }
