@@ -49,7 +49,7 @@ const App = () => {
       const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
         headers: {
-          "Authorization": `Bearer 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`,
+          "Authorization": "Bearer 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",
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
@@ -57,7 +57,7 @@ const App = () => {
           messages: [
             { 
               role: "system", 
-              content: "You are CreatorCoach. Your goal is to give viral reel/video ideas. Always use bullet points, clear headings, and line breaks so it is easy to read. Be punchy and energetic." 
+              content: "You are CreatorCoach. Give viral reel/video ideas. Use bullet points and line breaks." 
             },
             { role: "user", content: aiIdea }
           ]
@@ -74,7 +74,7 @@ const App = () => {
         localStorage.setItem('creator_usage_count', newCount.toString());
       }
     } catch (error) {
-      setResult("❌ AI failed. Check your API limits!");
+      setResult("❌ AI failed. Check your connection!");
     }
     setLoading(false);
   };
@@ -105,11 +105,10 @@ const App = () => {
           <p className="text-xl text-gray-500 max-w-2xl mx-auto mb-10 leading-relaxed">The first AI Coach for creators. Viral hooks in seconds.</p>
           
           <div className="flex flex-col items-center gap-4">
-            <a href="/creator-coach.apk" download className="group relative flex items-center gap-4 bg-blue-600 text-white px-10 py-5 rounded-3xl font-black text-xl shadow-2xl hover:bg-blue-700 hover:-translate-y-1 transition-all">
+            <a href="/creator-coach.apk" download className="group relative flex items-center gap-4 bg-blue-600 text-white px-10 py-5 rounded-3xl font-black text-xl shadow-2xl hover:bg-blue-700 transition-all">
               <span>Download for Android</span>
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor" className="w-6 h-6 group-hover:animate-bounce"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M7.5 12 12 16.5m0 0L16.5 12M12 16.5V3" /></svg>
             </a>
-            <p className="text-sm text-gray-400 font-medium italic">v1.0.3 • 5 Free Scripts • ₹30 for Lifetime VIP</p>
           </div>
         </section>
       </div>
@@ -117,4 +116,44 @@ const App = () => {
   }
 
   return (
-    <div className="min-h-screen
+    <div className="min-h-screen bg-black text-white p-6 relative">
+      {showPaywall && <Paywall onUnlock={handleUnlockSuccess} />}
+
+      <div className="max-w-md mx-auto pt-10">
+        <div className="flex justify-between items-center mb-8">
+            <h2 className="text-2xl font-black italic text-blue-500">Dashboard</h2>
+            <button onClick={() => supabase.auth.signOut()} className="text-xs text-gray-500 underline">Logout</button>
+        </div>
+
+        <p className="mb-4 text-sm font-bold text-gray-400 uppercase tracking-tighter">
+            {isVIP ? "👑 VIP UNLIMITED" : `🎁 FREE TRIES LEFT: ${Math.max(0, 5 - usageCount)}`}
+        </p>
+
+        <textarea 
+          className="w-full bg-zinc-900 p-4 rounded-2xl border border-zinc-800 mb-4 outline-none focus:border-blue-500 min-h-[120px]"
+          placeholder="What is your video about?"
+          value={aiIdea}
+          onChange={(e) => setAiIdea(e.target.value)}
+        />
+
+        <button 
+          onClick={generateViralIdea}
+          disabled={loading}
+          className="w-full bg-blue-600 p-4 rounded-2xl font-black text-lg active:scale-95 transition-all disabled:opacity-50"
+        >
+          {loading ? 'COACH IS THINKING...' : 'GENERATE 🚀'}
+        </button>
+
+        {result && (
+            <div className="mt-8 p-6 bg-zinc-900 rounded-2xl border border-blue-500/30">
+                <p className="text-gray-200 whitespace-pre-wrap leading-relaxed">
+                  {result}
+                </p>
+            </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default App;
