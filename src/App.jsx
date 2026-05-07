@@ -11,7 +11,9 @@ const App = () => {
   const [aiIdea, setAiIdea] = useState('');
   const [result, setResult] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showLoginScreen, setShowLoginScreen] = useState(false); 
+  
+  // This controls the initial "Sign Up / Login" choice screen
+  const [showAuthForm, setShowAuthForm] = useState(false); 
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -40,10 +42,10 @@ const App = () => {
       return;
     }
 
-    if (!aiIdea) return alert("Bro, type an idea first!");
+    if (!aiIdea) return alert("Type your topic first!");
 
     setLoading(true);
-    setResult("⏳ Thinking of something viral...");
+    setResult("⏳ Coach is thinking...");
     
     try {
       const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -55,18 +57,14 @@ const App = () => {
         body: JSON.stringify({
           model: "llama-3.1-8b-instant",
           messages: [
-            { 
-              role: "system", 
-              content: "You are CreatorCoach. Give viral reel/video ideas. Use bullet points and line breaks." 
-            },
+            { role: "system", content: "You are CreatorCoach. Give short, viral video hooks with bullet points." },
             { role: "user", content: aiIdea }
           ]
         })
       });
 
       const data = await response.json();
-      const aiResponse = data.choices[0].message.content;
-      setResult(aiResponse);
+      setResult(data.choices[0].message.content);
 
       if (!isVIP) {
         const newCount = usageCount + 1;
@@ -74,63 +72,73 @@ const App = () => {
         localStorage.setItem('creator_usage_count', newCount.toString());
       }
     } catch (error) {
-      setResult("❌ AI failed. Check your connection!");
+      setResult("❌ AI error. Check your connection.");
     }
     setLoading(false);
   };
 
+  // --- SCREEN 1: THE APP ENTRY POINT ---
   if (!session) {
-    if (showLoginScreen) {
-      return (
-        <div className="relative min-h-screen bg-gray-50">
-          <button onClick={() => setShowLoginScreen(false)} className="absolute top-8 left-8 font-black text-gray-500 z-50">← Back</button>
-          <Login />
-        </div>
-      );
-    }
-
     return (
-      <div className="min-h-screen bg-gray-50 font-sans text-gray-900 overflow-x-hidden">
-        <nav className="p-6 flex justify-between items-center max-w-6xl mx-auto">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-lg">C</div>
-            <span className="font-black text-2xl tracking-tighter italic">CreatorCoach</span>
-          </div>
-          <button onClick={() => setShowLoginScreen(true)} className="font-black text-blue-600 bg-blue-100 px-6 py-2 rounded-full shadow-sm">Login</button>
-        </nav>
+      <div className="min-h-screen bg-white font-sans flex flex-col items-center justify-center p-8">
+        
+        {/* THE AI TAGLINE */}
+        <div className="text-center mb-12">
+          <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white font-black text-3xl shadow-xl mx-auto mb-4">C</div>
+          <h1 className="text-3xl font-black italic tracking-tighter text-gray-900">CreatorCoach</h1>
+          <p className="text-blue-600 font-bold text-sm uppercase tracking-widest mt-2">Your AI Viral Growth Partner</p>
+        </div>
 
-        <section className="px-6 pt-10 pb-24 max-w-6xl mx-auto text-center">
-          <span className="bg-blue-100 text-blue-700 px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest mb-6 inline-block">Free Beta Access</span>
-          <h1 className="text-5xl md:text-7xl font-black mb-6 tracking-tight leading-none">Stop Staring at a <span className="text-blue-600 italic">Blank Screen.</span></h1>
-          <p className="text-xl text-gray-500 max-w-2xl mx-auto mb-10 leading-relaxed">The first AI Coach for creators. Viral hooks in seconds.</p>
-          
-          <div className="flex flex-col items-center gap-4">
-            <a href="/creator-coach.apk" download className="group relative flex items-center gap-4 bg-blue-600 text-white px-10 py-5 rounded-3xl font-black text-xl shadow-2xl hover:bg-blue-700 transition-all">
-              <span>Download for Android</span>
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor" className="w-6 h-6 group-hover:animate-bounce"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M7.5 12 12 16.5m0 0L16.5 12M12 16.5V3" /></svg>
-            </a>
+        {/* THE TWO OPTIONS */}
+        {!showAuthForm ? (
+          <div className="w-full max-w-sm space-y-4">
+            <button 
+              onClick={() => setShowAuthForm(true)}
+              className="w-full bg-blue-600 text-white font-black py-5 rounded-2xl text-xl shadow-lg active:scale-95 transition-all"
+            >
+              Sign Up
+            </button>
+            <button 
+              onClick={() => setShowAuthForm(true)}
+              className="w-full bg-gray-100 text-gray-900 font-black py-5 rounded-2xl text-xl active:scale-95 transition-all"
+            >
+              Login
+            </button>
+            <p className="text-center text-gray-400 text-xs font-medium">New users get 5 free AI ideas.</p>
           </div>
-        </section>
+        ) : (
+          /* THE LOGIN FORM (Shows after clicking above) */
+          <div className="w-full max-w-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
+             <Login />
+             <button 
+              onClick={() => setShowAuthForm(false)}
+              className="w-full mt-4 text-gray-400 font-bold text-sm underline"
+             >
+               Go Back
+             </button>
+          </div>
+        )}
       </div>
     );
   }
 
+  // --- SCREEN 2: THE DASHBOARD (LOGGED IN) ---
   return (
     <div className="min-h-screen bg-black text-white p-6 relative">
       {showPaywall && <Paywall onUnlock={handleUnlockSuccess} />}
 
-      <div className="max-w-md mx-auto pt-10">
-        <div className="flex justify-between items-center mb-8">
-            <h2 className="text-2xl font-black italic text-blue-500">Dashboard</h2>
-            <button onClick={() => supabase.auth.signOut()} className="text-xs text-gray-500 underline">Logout</button>
+      <div className="max-w-md mx-auto pt-6">
+        <div className="flex justify-between items-center mb-10">
+            <h2 className="text-xl font-black italic text-blue-500">CreatorCoach</h2>
+            <button onClick={() => supabase.auth.signOut()} className="text-xs text-gray-500 font-bold">LOGOUT</button>
         </div>
 
-        <p className="mb-4 text-sm font-bold text-gray-400 uppercase tracking-tighter">
-            {isVIP ? "👑 VIP UNLIMITED" : `🎁 FREE TRIES LEFT: ${Math.max(0, 5 - usageCount)}`}
+        <p className="mb-4 text-xs font-black text-gray-500 uppercase tracking-widest">
+            {isVIP ? "👑 VIP MEMBER" : `🎁 REMAINING: ${Math.max(0, 5 - usageCount)}`}
         </p>
 
         <textarea 
-          className="w-full bg-zinc-900 p-4 rounded-2xl border border-zinc-800 mb-4 outline-none focus:border-blue-500 min-h-[120px]"
+          className="w-full bg-zinc-900 p-5 rounded-3xl border border-zinc-800 mb-4 outline-none focus:border-blue-600 min-h-[150px] text-lg"
           placeholder="What is your video about?"
           value={aiIdea}
           onChange={(e) => setAiIdea(e.target.value)}
@@ -139,13 +147,13 @@ const App = () => {
         <button 
           onClick={generateViralIdea}
           disabled={loading}
-          className="w-full bg-blue-600 p-4 rounded-2xl font-black text-lg active:scale-95 transition-all disabled:opacity-50"
+          className="w-full bg-blue-600 p-5 rounded-3xl font-black text-xl shadow-blue-900/20 shadow-2xl active:scale-95 transition-all disabled:opacity-50"
         >
-          {loading ? 'COACH IS THINKING...' : 'GENERATE 🚀'}
+          {loading ? 'ANALYZING...' : 'GENERATE HOOKS 🚀'}
         </button>
 
         {result && (
-            <div className="mt-8 p-6 bg-zinc-900 rounded-2xl border border-blue-500/30">
+            <div className="mt-8 p-6 bg-zinc-900 rounded-3xl border border-zinc-800">
                 <p className="text-gray-200 whitespace-pre-wrap leading-relaxed">
                   {result}
                 </p>
