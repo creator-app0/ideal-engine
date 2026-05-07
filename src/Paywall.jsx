@@ -4,8 +4,8 @@ const Paywall = ({ onUnlock }) => {
   const [codeInput, setCodeInput] = useState('');
   
   // YOUR DETAILS GO HERE
-  const upiId = "harshbasoya@fampay"; // Replace with your exact UPI ID
-  const whatsappNumber = "919999936371s"; 
+  const upiId = "harshbasoya@fam"; // Replace with your exact UPI ID
+  const whatsappNumber = "919999936371"; 
   const exactPrice = "30.00"; // Keep the .00 for UPI formatting
   const SECRET_PASSCODE = "VIP-30"; 
 
