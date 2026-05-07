@@ -10,8 +10,11 @@ const App = () => {
   const [showPaywall, setShowPaywall] = useState(false);
   const [aiIdea, setAiIdea] = useState('');
   const [result, setResult] = useState('');
+  
+  // NEW: This controls whether we see the Landing Page or the Login Screen
+  const [showLoginScreen, setShowLoginScreen] = useState(false); 
 
-  // 1. Check if user is logged in + Load VIP status
+  // 1. Check if user is logged in
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -27,14 +30,14 @@ const App = () => {
     if (savedCount) setUsageCount(parseInt(savedCount, 10));
   }, []);
 
-  // 2. The Logic to Unlock
+  // 2. Unlock Logic
   const handleUnlockSuccess = () => {
     setIsVIP(true);
     localStorage.setItem('creator_vip_status', 'true');
     setShowPaywall(false);
   };
 
-  // 3. The Generator Function
+  // 3. Generator Logic
   const generateViralIdea = () => {
     if (!isVIP && usageCount >= 5) {
       setShowPaywall(true);
@@ -51,20 +54,43 @@ const App = () => {
   };
 
   // ==========================================
-  // SCREEN 1: NOT LOGGED IN -> BEAUTIFUL LANDING PAGE
+  // SCREEN 1: NOT LOGGED IN 
   // ==========================================
   if (!session) {
+    
+    // IF THEY CLICKED LOGIN: Show only the Login component
+    if (showLoginScreen) {
+      return (
+        <div className="relative min-h-screen bg-gray-50">
+          <button 
+            onClick={() => setShowLoginScreen(false)} 
+            className="absolute top-8 left-8 font-black text-gray-500 hover:text-black z-50"
+          >
+            ← Back
+          </button>
+          <Login />
+        </div>
+      );
+    }
+
+    // DEFAULT: Show the Beautiful Landing Page
     return (
       <div className="min-h-screen bg-gray-50 font-sans text-gray-900 overflow-x-hidden">
-        {/* NATIVE-STYLE HEADER */}
         <nav className="p-6 flex justify-between items-center max-w-6xl mx-auto">
           <div className="flex items-center gap-2">
             <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-lg">C</div>
             <span className="font-black text-2xl tracking-tighter italic">CreatorCoach</span>
           </div>
+          
+          {/* THE REAL LOGIN BUTTON */}
+          <button 
+            onClick={() => setShowLoginScreen(true)} 
+            className="font-black text-blue-600 bg-blue-100 px-6 py-2 rounded-full hover:bg-blue-200 transition-all shadow-sm"
+          >
+            Login
+          </button>
         </nav>
 
-        {/* HERO SECTION */}
         <section className="px-6 pt-10 pb-24 max-w-6xl mx-auto text-center">
           <span className="bg-blue-100 text-blue-700 px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest mb-6 inline-block">Free Beta Access</span>
           <h1 className="text-5xl md:text-7xl font-black mb-6 tracking-tight leading-none">
@@ -74,7 +100,6 @@ const App = () => {
             The first AI Coach built specifically for creators. Get viral reel ideas, high-retention hooks, and daily motivation.
           </p>
           
-          {/* THE REAL DOWNLOAD BUTTON */}
           <div className="flex flex-col items-center gap-4 mb-16">
             <a 
               href="/creator-coach.apk" 
@@ -88,12 +113,6 @@ const App = () => {
             </a>
             <p className="text-sm text-gray-400 font-medium italic">v1.0.2 • 5 Free Scripts • ₹30 for Lifetime VIP</p>
           </div>
-
-          {/* THE LOGIN BOX FOR APP USERS */}
-          <div className="max-w-md mx-auto border-t border-gray-200 pt-12">
-            <h3 className="text-gray-400 font-bold mb-4 uppercase tracking-widest text-sm">Already have an account?</h3>
-            <Login />
-          </div>
         </section>
       </div>
     );
@@ -104,7 +123,6 @@ const App = () => {
   // ==========================================
   return (
     <div className="min-h-screen bg-black text-white p-6 relative">
-      {/* THE PAYWALL TRAP */}
       {showPaywall && <Paywall onUnlock={handleUnlockSuccess} />}
 
       <div className="max-w-md mx-auto pt-10">
