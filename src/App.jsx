@@ -17,7 +17,7 @@ const App = () => {
   const [isAndroidApp, setIsAndroidApp] = useState(false);
 
   useEffect(() => {
-    // 1. Check for the "Secret Key" we added to capacitor.config.json
+    // 1. Check for the "Secret Key" in the URL
     const isAppMode = window.location.search.includes('platform=app');
     
     // 2. Check for native signatures (WebView or Capacitor)
@@ -90,7 +90,7 @@ const App = () => {
         localStorage.setItem('creator_usage_count', newCount.toString());
       }
     } catch (error) {
-      setResult("❌ AI failed. Check your API key or connection!");
+      setResult("❌ AI failed. Check your connection!");
     }
     setLoading(false);
   };
@@ -103,8 +103,8 @@ const App = () => {
     // SCREEN A: THE ANDROID APP VIEW
     if (isAndroidApp) {
       return (
-        <div className="min-h-screen bg-white font-sans flex flex-col items-center justify-center p-8">
-          <div className="text-center mb-12">
+        <div className="min-h-screen bg-white font-sans flex flex-col items-center justify-center p-8 text-center">
+          <div className="mb-12">
             <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white font-black text-3xl shadow-xl mx-auto mb-4">C</div>
             <h1 className="text-3xl font-black italic tracking-tighter text-gray-900">CreatorCoach</h1>
             <p className="text-blue-600 font-bold text-sm uppercase tracking-widest mt-2">Your AI Viral Growth Partner</p>
@@ -112,12 +112,12 @@ const App = () => {
 
           {!showAuthForm ? (
             <div className="w-full max-w-sm space-y-4">
-              <button onClick={() => setShowAuthForm(true)} className="w-full bg-blue-600 text-white font-black py-5 rounded-2xl text-xl shadow-lg active:scale-95">Sign Up</button>
-              <button onClick={() => setShowAuthForm(true)} className="w-full bg-gray-100 text-gray-900 font-black py-5 rounded-2xl text-xl active:scale-95">Login</button>
+              <button onClick={() => setShowAuthForm(true)} className="w-full bg-blue-600 text-white font-black py-5 rounded-2xl text-xl shadow-lg active:scale-95 transition-all">Sign Up</button>
+              <button onClick={() => setShowAuthForm(true)} className="w-full bg-gray-100 text-gray-900 font-black py-5 rounded-2xl text-xl active:scale-95 transition-all">Login</button>
               <p className="text-center text-gray-400 text-xs font-medium">New users get 5 free AI ideas.</p>
             </div>
           ) : (
-            <div className="w-full max-w-sm">
+            <div className="w-full max-w-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
                <Login />
                <button onClick={() => setShowAuthForm(false)} className="w-full mt-4 text-gray-400 font-bold text-sm underline">Go Back</button>
             </div>
@@ -168,7 +168,7 @@ const App = () => {
 
       <div className="max-w-md mx-auto pt-6">
         <div className="flex justify-between items-center mb-10">
-            <h2 className="text-xl font-black italic text-blue-500 text-shadow-glow">CreatorCoach</h2>
+            <h2 className="text-xl font-black italic text-blue-500">CreatorCoach</h2>
             <button onClick={() => supabase.auth.signOut()} className="text-xs text-gray-500 font-bold underline">LOGOUT</button>
         </div>
 
