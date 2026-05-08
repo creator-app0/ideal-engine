@@ -117,7 +117,7 @@ const App = () => {
               <p className="text-center text-gray-400 text-xs font-medium">New users get 5 free AI ideas.</p>
             </div>
           ) : (
-            <div className="w-full max-w-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="w-full max-w-sm">
                <Login />
                <button onClick={() => setShowAuthForm(false)} className="w-full mt-4 text-gray-400 font-bold text-sm underline">Go Back</button>
             </div>
