@@ -88,35 +88,7 @@ const App = () => {
     setLoading(false);
   };
 
-  if (!session) {
-    if (isAndroidApp) {
-      return (
-        <div className="min-h-screen bg-white font-sans flex flex-col items-center justify-center p-8 text-center">
-          <div className="mb-12">
-            <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white font-black text-3xl shadow-xl mx-auto mb-4">C</div>
-            <h1 className="text-3xl font-black italic tracking-tighter text-gray-900">CreatorCoach</h1>
-            <p className="text-blue-600 font-bold text-sm uppercase tracking-widest mt-2">Your AI Viral Growth Partner</p>
-          </div>
-          {!showAuthForm ? (
-            <div className="w-full max-w-sm space-y-4">
-              <button onClick={() => setShowAuthForm(true)} className="w-full bg-blue-600 text-white font-black py-5 rounded-2xl text-xl shadow-lg active:scale-95 transition-all">Sign Up</button>
-              <button onClick={() => setShowAuthForm(true)} className="w-full bg-gray-100 text-gray-900 font-black py-5 rounded-2xl text-xl active:scale-95 transition-all">Login</button>
-            </div>
-          ) : (
-            <div className="w-full max-w-sm">
-               <Login />
-               <button onClick={() => setShowAuthForm(false)} className="w-full mt-4 text-gray-400 font-bold text-sm underline">Go Back</button>
-            </div>
-          )}
-        </div>
-      );
-    }
-
-    return (
-      <div className="min-h-screen bg-gray-50 font-sans text-gray-900 overflow-x-hidden">
-        <nav className="p-6 flex justify-between items-center max-w-6xl mx-auto">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-lg">C</div>
+  
             <span className="font-black text-2xl tracking-tighter italic">CreatorCoach</span>
           </div>
         </nav>
@@ -129,7 +101,7 @@ const App = () => {
               <span>Download for Android</span>
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M7.5 12 12 16.5m0 0L16.5 12M12 16.5V3" /></svg>
             </a>
-            <p className="text-sm text-gray-400 font-medium italic">v1.0.5 • 5 Free Scripts • ₹30 for Lifetime VIP</p>
+            <p className="text-sm text-gray-400 font-medium italic">v1.0.5 • 5 Free Scripts • ₹149 for Lifetime VIP</p>
           </div>
         </section>
       </div>

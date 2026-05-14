@@ -6,7 +6,7 @@ const Paywall = ({ onUnlock }) => {
   // YOUR DETAILS GO HERE
   const upiId = "harshbasoya@fam"; // Replace with your exact UPI ID
   const whatsappNumber = "919999936371"; 
-  const exactPrice = "30.00"; // Keep the .00 for UPI formatting
+  const exactPrice = "149.00"; // Keep the .00 for UPI formatting
   const SECRET_PASSCODE = "VIP-30"; 
 
   // THIS IS THE MAGIC LINK
@@ -39,7 +39,7 @@ const Paywall = ({ onUnlock }) => {
           onClick={() => window.open(upiDeepLink, '_system')}
           className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white w-full py-4 rounded-xl font-black text-lg mb-4 shadow-[0_0_20px_-5px_rgba(37,99,235,0.5)] active:scale-95 transition-all"
         >
-          <span>Pay ₹30 (Any UPI App)</span>
+          <span>Pay ₹149 (Any UPI App)</span>
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
           </svg>
