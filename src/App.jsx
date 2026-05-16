@@ -1,21 +1,12 @@
 import React, { useState } from 'react';
 import Paywall from './Paywall';
 
-// If you have a Login component, you can import it here:
-// import Login from './Login'; 
-
 const App = () => {
   const [showPaywall, setShowPaywall] = useState(false);
   const [showAuthForm, setShowAuthForm] = useState(false);
 
   // 🛡️ THE BULLETPROOF SWITCH 🛡️
-  // This checks if the app is running on the Android phone (localhost/capacitor) 
-  // vs running on the internet (Vercel)
-  const isNativeApp = typeof window !== 'undefined' && (
-    window.location.hostname === 'localhost' || 
-    window.location.protocol === 'capacitor:' || 
-    window.location.protocol === 'file:'
-  );
+  const isNativeApp = typeof window !== 'undefined' && !!window.Capacitor;
 
   // ==========================================
   // 📱 VIEW 1: WHAT HAPPENS INSIDE THE APK 📱
@@ -36,7 +27,6 @@ const App = () => {
           </div>
         ) : (
           <div className="w-full max-w-sm">
-            {/* If you have your <Login /> component, you can put it here instead of this div */}
             <div className="bg-gray-100 p-6 rounded-2xl mb-4 text-left">
               <h3 className="font-black text-gray-900 mb-4 text-xl">Enter VIP Details</h3>
               <input type="email" placeholder="Email" className="w-full p-4 mb-3 rounded-xl border border-gray-300 text-black" />
