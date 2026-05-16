@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Paywall from './Paywall';
+import Login from './Login'; // <-- YOUR REAL LOGIN IS BACK!
 
 const App = () => {
   const [showPaywall, setShowPaywall] = useState(false);
@@ -27,12 +28,9 @@ const App = () => {
           </div>
         ) : (
           <div className="w-full max-w-sm">
-            <div className="bg-gray-100 p-6 rounded-2xl mb-4 text-left">
-              <h3 className="font-black text-gray-900 mb-4 text-xl">Enter VIP Details</h3>
-              <input type="email" placeholder="Email" className="w-full p-4 mb-3 rounded-xl border border-gray-300 text-black" />
-              <input type="password" placeholder="Password" className="w-full p-4 mb-4 rounded-xl border border-gray-300 text-black" />
-              <button className="w-full bg-blue-600 text-white font-black py-4 rounded-xl">Enter App</button>
-            </div>
+            
+            {/* YOUR REAL EMAIL/OTP COMPONENT LOADS HERE */}
+            <Login />
             
             <button onClick={() => setShowAuthForm(false)} className="w-full mt-4 text-gray-400 font-bold text-sm underline">Go Back</button>
           </div>
