@@ -1,80 +1,38 @@
-import React, { useState } from 'react';
+import React from 'react';
 
 const Paywall = ({ onUnlock }) => {
-  const [codeInput, setCodeInput] = useState('');
+  // --- IMPORTANT UPDATE REQUIRED HERE ---
+  // Replace this with your exact UPI ID (e.g., yourname@oksbi)
+  const upiId = "harshbasoya@fam"; 
+  const name = "CreatorCoach";
   
-  // YOUR DETAILS GO HERE
-  const upiId = "harshbasoya@fam"; // Replace with your exact UPI ID
-  const whatsappNumber = "919999936371"; 
-  const exactPrice = "149.00"; // Keep the .00 for UPI formatting
-  const SECRET_PASSCODE = "VIP-30"; 
-
-  // THIS IS THE MAGIC LINK
-  // It forces Android to open UPI apps with your details pre-filled
-  const upiDeepLink = `upi://pay?pa=${upiId}&pn=CreatorCoach&am=${exactPrice}&cu=INR&tn=Premium%20Upgrade`;
-
-  const handleVerify = () => {
-    if (codeInput === SECRET_PASSCODE) {
-      onUnlock(); 
-    } else {
-      alert("Invalid code! Make sure you paid and got the code on WhatsApp.");
-    }
-  };
+  // The price is locked at 149
+  const amount = "149";
+  
+  // This constructs the exact URL that forces GPay/PhonePe to open
+  const upiDeepLink = `upi://pay?pa=${upiId}&pn=${name}&am=${amount}&cu=INR`;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 text-white font-sans">
-      <div className="bg-[#111] border border-blue-500/30 p-8 rounded-[30px] max-w-sm w-full shadow-[0_0_50px_-12px_rgba(37,99,235,0.5)] text-center">
+    <div className="fixed inset-0 bg-black/95 backdrop-blur-md z-50 flex flex-col items-center justify-center p-6 text-center">
+      <div className="bg-gray-900 border border-gray-800 p-8 rounded-3xl max-w-sm w-full shadow-2xl">
+        <h2 className="text-3xl font-black text-white mb-2">Lifetime VIP</h2>
+        <p className="text-gray-400 mb-8">Unlock unlimited Llama-3.1 viral scripts and niche analysis.</p>
         
-        <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
-          ⚡
+        <div className="text-5xl font-black text-white mb-8">
+          ₹149 <span className="text-lg text-gray-500 font-medium tracking-normal">/ forever</span>
         </div>
-        
-        <h2 className="text-3xl font-black mb-2 tracking-tight">Go Premium</h2>
-        <p className="text-gray-400 text-sm mb-6">
-          Unlock unlimited viral scripts and hooks for just ₹30.
-        </p>
 
-        {/* ONE-CLICK UNIVERSAL UPI BUTTON */}
         <button 
-          onClick={() => window.open(upiDeepLink, '_system')}
-          className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white w-full py-4 rounded-xl font-black text-lg mb-4 shadow-[0_0_20px_-5px_rgba(37,99,235,0.5)] active:scale-95 transition-all"
+          onClick={() => window.location.href = upiDeepLink}
+          className="w-full bg-blue-600 text-white font-black py-4 rounded-xl text-lg shadow-lg active:scale-95 transition-all mb-4 flex items-center justify-center gap-2"
         >
-          <span>Pay ₹149 (Any UPI App)</span>
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
+            <path fillRule="evenodd" d="M14.615 1.595a.75.75 0 01.359.852L12.982 9.75h7.268a.75.75 0 01.548 1.262l-10.5 11.25a.75.75 0 01-1.272-.71l1.992-7.302H3.75a.75.75 0 01-.548-1.262l10.5-11.25a.75.75 0 01.913-.143z" clipRule="evenodd" />
           </svg>
+          Pay ₹149 via UPI
         </button>
         
-        {/* WHATSAPP BUTTON */}
-        <a 
-          href={`https://wa.me/${whatsappNumber}?text=Bro%20I%20just%20paid%20%E2%82%B930%20for%20CreatorCoach!%20Here%20is%20my%20screenshot.`}
-          target="_blank"
-          rel="noreferrer"
-          className="text-xs text-gray-400 underline hover:text-white mb-8 block"
-        >
-          Paid? Click here to send screenshot & get your Unlock Code
-        </a>
-
-        {/* UNLOCK CODE INPUT */}
-        <div className="border-t border-white/10 pt-6">
-          <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-3">Enter VIP Code</p>
-          <div className="flex gap-2">
-            <input 
-              type="text" 
-              placeholder="Code from WhatsApp..." 
-              value={codeInput}
-              onChange={(e) => setCodeInput(e.target.value)}
-              className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 flex-1 outline-none focus:border-blue-500 font-mono text-center text-sm uppercase"
-            />
-            <button 
-              onClick={handleVerify}
-              className="bg-white text-black px-6 rounded-xl font-bold transition active:scale-95"
-            >
-              Unlock
-            </button>
-          </div>
-        </div>
-
+        <p className="text-xs text-gray-500 font-medium">Secured Payment. Instant activation.</p>
       </div>
     </div>
   );
