@@ -25,7 +25,6 @@ const App = () => {
   const [isListening, setIsListening] = useState(false);
 
   // 🛡️ THE BULLETPROOF SWITCH 🛡️
-  // Change this to `true` temporarily when you want to screen-record on your laptop!
   const isNativeApp = typeof window !== 'undefined' && !!window.Capacitor;
 
   // --- NATIVE VOICE RECOGNITION ---
@@ -77,14 +76,27 @@ const App = () => {
   const messagesEndRef = useRef(null);
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, isTyping]);
 
-  // --- Llama-3.1 API CALL (WITH AUTO-DEMO FALLBACK) ---
+  // --- STRICT Llama-3.1 API CALL ---
   const handleSend = async () => {
     if (inputText.trim() === '' || !session) return;
     
-    await Haptics.impact({ style: ImpactStyle.Light });
     const userText = inputText;
     const currentUserId = session.user.id;
     setInputText('');
+
+    const apiKey = import.meta.env.VITE_GROQ_API_KEY;
+    
+    // Fallback if key doesn't exist
+    if (!apiKey || apiKey === "MISSING_KEY" || apiKey === "") {
+      setMessages(prev => [
+        ...prev, 
+        { text: userText, sender: 'user' },
+        { text: "❌ **ERROR:** `VITE_GROQ_API_KEY` is completely missing. Please add it to your `.env` file or Vercel Environment Variables and restart your server.", sender: 'ai' }
+      ]);
+      return;
+    }
+
+    await Haptics.impact({ style: ImpactStyle.Light });
 
     let currentChatId = activeChatId;
     if (!currentChatId) {
@@ -96,21 +108,6 @@ const App = () => {
     setIsTyping(true);
     await supabase.from('messages').insert([{ text: userText, sender: 'user', user_id: currentUserId, chat_id: currentChatId }]);
 
-    // Grab the API key safely inside the function
-    const apiKey = import.meta.env.VITE_GROQ_API_KEY;
-
-    // 🎬 THE HOLLYWOOD FALLBACK: If Vercel doesn't have the API key, use Demo Mode!
-    if (!apiKey || apiKey === "MISSING_KEY" || apiKey === "") {
-      setTimeout(async () => {
-        const fakeText = `**Analyzing Audience Data...** 🚀\n\nHere are 3 viral hooks for your idea:\n\n1. ❌ Stop doing [Blank] if you want to [Goal]. Do this instead...\n2. 🤫 The dark psychology secret nobody tells you about [Topic].\n3. 🤯 I tried [Strategy] for 30 days and my mind is blown.`;
-        setMessages(prev => [...prev, { text: fakeText, sender: 'ai' }]);
-        await supabase.from('messages').insert([{ text: fakeText, sender: 'ai', user_id: currentUserId, chat_id: currentChatId }]);
-        setIsTyping(false);
-      }, 1500);
-      return; 
-    }
-
-    // 🧠 REAL AI MODE: If key exists, run the real Llama-3.1
     try {
       const groq = new Groq({ apiKey: apiKey, dangerouslyAllowBrowser: true });
       const stream = await groq.chat.completions.create({
@@ -137,7 +134,7 @@ const App = () => {
       await supabase.from('messages').insert([{ text: fullAiText, sender: 'ai', user_id: currentUserId, chat_id: currentChatId }]);
     } catch (e) { 
       console.error(e); 
-      setMessages(prev => [...prev, { text: "❌ Connection error. Try again later.", sender: 'ai' }]);
+      setMessages(prev => [...prev, { text: `❌ **Groq API Connection Error:** ${e.message || e}`, sender: 'ai' }]);
     } finally { 
       setIsTyping(false); 
     }
@@ -149,7 +146,7 @@ const App = () => {
   // ==========================================
   if (isNativeApp) {
     
-    // 🔒 NOT LOGGED IN? SHOW WHITE SIGNUP SCREEN
+    // 🔒 NOT LOGGED IN? SHOW SIGNUP SCREEN
     if (!session) {
       return (
         <div className="min-h-screen bg-white font-sans flex flex-col items-center justify-center p-8 text-center">
@@ -187,7 +184,7 @@ const App = () => {
                <textarea 
                  value={userBio} 
                  onChange={(e) => { setUserBio(e.target.value); localStorage.setItem('userBio', e.target.value); }}
-                 className="w-full h-32 p-3 rounded-xl bg-gray-100 dark:bg-gray-800 border-none outline-none text-sm"
+                 className="w-full h-32 p-3 rounded-xl bg-gray-100 dark:bg-gray-800 border-none outline-none text-sm text-black dark:text-white"
                  placeholder="e.g. I am a fitness coach on Instagram trying to reach 10k followers..."
                />
                <button onClick={() => setShowSettings(false)} className="w-full mt-4 bg-blue-600 text-white py-3 rounded-xl font-bold">Save Profile</button>
@@ -207,7 +204,7 @@ const App = () => {
               <button onClick={() => { setActiveChatId(null); setShowHistory(false); }} className="w-full bg-blue-600 py-3 rounded-xl font-bold mb-4">+ New Chat</button>
               <div className="flex-1 overflow-y-auto space-y-2">
                  {chats.map(chat => (
-                   <div key={chat.id} onClick={() => { setActiveChatId(chat.id); setShowHistory(false); }} className={`p-3 rounded-lg text-sm truncate cursor-pointer ${activeChatId === chat.id ? 'bg-gray-800' : 'text-gray-400 hover:bg-gray-800/50'}`}>{chat.title}</div>
+                   <div key={chat.id} onClick={() => { setActiveChatId(chat.id); setShowHistory(false); }} className={`p-3 rounded-lg text-sm truncate cursor-pointer ${activeChatId === chat.id ? 'bg-gray-800' : 'text-gray-400 hover:bg-gray-800/50'}`}>{chat.title || ''}</div>
                  ))}
               </div>
             </div>
@@ -232,7 +229,10 @@ const App = () => {
               {messages.map((msg, index) => (
                 <div key={index} className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}>
                   <div className={`rounded-2xl px-5 py-3 max-w-[95%] shadow-sm ${msg.sender === 'user' ? 'bg-blue-600 text-white' : theme === 'dark' ? 'bg-gray-900 border border-gray-800 text-gray-100' : 'bg-gray-100 text-gray-800'}`}>
-                    <ReactMarkdown className="prose prose-sm dark:prose-invert text-[16px] leading-relaxed overflow-hidden">{msg.text}</ReactMarkdown>
+                    {/* 🛠️ FIXED: Removed className from ReactMarkdown and wrapped it inside a standard div */}
+                    <div className="prose prose-sm dark:prose-invert text-[16px] leading-relaxed overflow-hidden">
+                      <ReactMarkdown>{msg.text || ''}</ReactMarkdown>
+                    </div>
                   </div>
                 </div>
               ))}
