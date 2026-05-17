@@ -1,18 +1,127 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Paywall from './Paywall';
-import Login from './Login'; // <-- YOUR REAL LOGIN IS BACK!
+import Login from './Login';
+import { supabase } from './supabaseclient'; 
 
 const App = () => {
   const [showPaywall, setShowPaywall] = useState(false);
   const [showAuthForm, setShowAuthForm] = useState(false);
+  const [session, setSession] = useState(null); 
+
+  // AI Dashboard States
+  const [idea, setIdea] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [hooks, setHooks] = useState([]);
+  const [isRecording, setIsRecording] = useState(false);
 
   // 🛡️ THE BULLETPROOF SWITCH 🛡️
   const isNativeApp = typeof window !== 'undefined' && !!window.Capacitor;
+
+  // 🕵️ THE VIP BOUNCER
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // FAKE GENERATOR JUST FOR YOUR SCREEN RECORDING REEL 🎥
+  const handleGenerateHooks = () => {
+    if (!idea) return;
+    setIsGenerating(true);
+    setHooks([]);
+    
+    // Fakes a 2-second loading animation for the Reel
+    setTimeout(() => {
+      setHooks([
+        "❌ Stop doing [Blank] if you want to [Goal]. Do this instead...",
+        "🤫 The dark psychology secret nobody tells you about [Topic].",
+        "🤯 I tried [Strategy] for 30 days and my mind is blown."
+      ]);
+      setIsGenerating(false);
+    }, 2000);
+  };
+
 
   // ==========================================
   // 📱 VIEW 1: WHAT HAPPENS INSIDE THE APK 📱
   // ==========================================
   if (isNativeApp) {
+    
+    // 🔥 IF LOGGED IN: SHOW THE AI DASHBOARD 🔥
+    if (session) {
+      return (
+        <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-start p-6 font-sans">
+          
+          {/* Header */}
+          <div className="w-full max-w-md flex justify-between items-center mb-8 mt-4">
+             <div className="flex items-center gap-3">
+               <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-lg">C</div>
+               <h2 className="text-xl font-black text-gray-900 tracking-tight">CreatorCoach</h2>
+             </div>
+             <button onClick={() => supabase.auth.signOut()} className="text-xs font-bold text-gray-400 underline">Log Out</button>
+          </div>
+
+          {/* AI Generator Box */}
+          <div className="w-full max-w-md bg-white rounded-[2rem] p-6 shadow-xl border border-gray-100 mb-6">
+             <div className="flex justify-between items-center mb-6">
+                <h3 className="font-bold text-gray-800">Generate Hook</h3>
+                <span className="bg-blue-50 text-blue-600 text-[10px] px-3 py-1 rounded-full font-black uppercase tracking-widest border border-blue-100">Llama-3.1-8b</span>
+             </div>
+
+             <div className="relative mb-6">
+                <textarea 
+                  value={idea}
+                  onChange={(e) => setIdea(e.target.value)}
+                  placeholder="What is your video about? e.g. How to get rich in your 20s..."
+                  className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-4 min-h-[120px] text-gray-800 outline-none focus:ring-2 focus:ring-blue-500 transition-all resize-none"
+                />
+                
+                {/* Voice-to-Idea Mic Button */}
+                <button 
+                  onClick={() => setIsRecording(!isRecording)}
+                  className={`absolute bottom-3 right-3 p-2.5 rounded-full transition-all shadow-sm ${isRecording ? 'bg-red-500 text-white animate-pulse' : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50'}`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" /></svg>
+                </button>
+             </div>
+
+             <button 
+               onClick={handleGenerateHooks}
+               disabled={isGenerating || !idea}
+               className="w-full bg-blue-600 text-white font-black py-4 rounded-xl shadow-[0_0_20px_-5px_rgba(37,99,235,0.5)] active:scale-95 transition-all disabled:opacity-70 flex justify-center items-center gap-2"
+             >
+               {isGenerating ? (
+                 <span className="animate-pulse">Analyzing Audience...</span>
+               ) : (
+                 'Generate Viral Hooks 🚀'
+               )}
+             </button>
+          </div>
+
+          {/* Results Area */}
+          {hooks.length > 0 && (
+            <div className="w-full max-w-md space-y-4 animate-[fadeIn_0.5s_ease-out]">
+              <h4 className="font-black text-gray-800 ml-2">Top Performing Hooks:</h4>
+              {hooks.map((hook, index) => (
+                <div key={index} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex gap-4 items-start cursor-copy hover:border-blue-300 transition-all">
+                  <div className="bg-blue-100 text-blue-600 w-8 h-8 rounded-full flex items-center justify-center font-black shrink-0">{index + 1}</div>
+                  <p className="text-gray-700 font-medium leading-relaxed">{hook}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+        </div>
+      );
+    }
+
+    // 🔒 IF NOT LOGGED IN: SHOW LOGIN SCREEN 🔒
     return (
       <div className="min-h-screen bg-white font-sans flex flex-col items-center justify-center p-8 text-center">
         <div className="mb-12">
@@ -28,10 +137,7 @@ const App = () => {
           </div>
         ) : (
           <div className="w-full max-w-sm">
-            
-            {/* YOUR REAL EMAIL/OTP COMPONENT LOADS HERE */}
             <Login />
-            
             <button onClick={() => setShowAuthForm(false)} className="w-full mt-4 text-gray-400 font-bold text-sm underline">Go Back</button>
           </div>
         )}
