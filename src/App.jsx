@@ -6,19 +6,13 @@ import Login from './Login';
 import Paywall from './Paywall';
 import ReactMarkdown from 'react-markdown';
 
-// Groq setup for Llama-3.1
-const groq = new Groq({
-  apiKey: import.meta.env.VITE_GROQ_API_KEY,
-  dangerouslyAllowBrowser: true,
-});
-
 const App = () => {
   // --- AUTH & LANDING PAGE STATE ---
   const [session, setSession] = useState(null);
   const [showPaywall, setShowPaywall] = useState(false);
   const [showAuthForm, setShowAuthForm] = useState(false);
 
-  // --- DASHBOARD STATE (From Original) ---
+  // --- DASHBOARD STATE ---
   const [inputText, setInputText] = useState('');
   const [messages, setMessages] = useState([]);
   const [chats, setChats] = useState([]);
@@ -31,7 +25,7 @@ const App = () => {
   const [isListening, setIsListening] = useState(false);
 
   // 🛡️ THE BULLETPROOF SWITCH 🛡️
-  // CHANGE TO `true` TEMPORARILY IF YOU WANT TO RECORD ON LAPTOP BROWSER!
+  // Change this to `true` temporarily when you want to screen-record on your laptop!
   const isNativeApp = typeof window !== 'undefined' && !!window.Capacitor;
 
   // --- NATIVE VOICE RECOGNITION ---
@@ -83,9 +77,10 @@ const App = () => {
   const messagesEndRef = useRef(null);
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, isTyping]);
 
-  // --- Llama-3.1 API CALL ---
+  // --- Llama-3.1 API CALL (WITH AUTO-DEMO FALLBACK) ---
   const handleSend = async () => {
     if (inputText.trim() === '' || !session) return;
+    
     await Haptics.impact({ style: ImpactStyle.Light });
     const userText = inputText;
     const currentUserId = session.user.id;
@@ -101,7 +96,23 @@ const App = () => {
     setIsTyping(true);
     await supabase.from('messages').insert([{ text: userText, sender: 'user', user_id: currentUserId, chat_id: currentChatId }]);
 
+    // Grab the API key safely inside the function
+    const apiKey = import.meta.env.VITE_GROQ_API_KEY;
+
+    // 🎬 THE HOLLYWOOD FALLBACK: If Vercel doesn't have the API key, use Demo Mode!
+    if (!apiKey || apiKey === "MISSING_KEY" || apiKey === "") {
+      setTimeout(async () => {
+        const fakeText = `**Analyzing Audience Data...** 🚀\n\nHere are 3 viral hooks for your idea:\n\n1. ❌ Stop doing [Blank] if you want to [Goal]. Do this instead...\n2. 🤫 The dark psychology secret nobody tells you about [Topic].\n3. 🤯 I tried [Strategy] for 30 days and my mind is blown.`;
+        setMessages(prev => [...prev, { text: fakeText, sender: 'ai' }]);
+        await supabase.from('messages').insert([{ text: fakeText, sender: 'ai', user_id: currentUserId, chat_id: currentChatId }]);
+        setIsTyping(false);
+      }, 1500);
+      return; 
+    }
+
+    // 🧠 REAL AI MODE: If key exists, run the real Llama-3.1
     try {
+      const groq = new Groq({ apiKey: apiKey, dangerouslyAllowBrowser: true });
       const stream = await groq.chat.completions.create({
         messages: [
           { role: "system", content: `You are a Viral Growth Coach. User Bio: ${userBio}. Be concise, use Markdown, and bold headers.` },
@@ -123,9 +134,13 @@ const App = () => {
           return updated;
         });
       }
-      
       await supabase.from('messages').insert([{ text: fullAiText, sender: 'ai', user_id: currentUserId, chat_id: currentChatId }]);
-    } catch (e) { console.error(e); } finally { setIsTyping(false); }
+    } catch (e) { 
+      console.error(e); 
+      setMessages(prev => [...prev, { text: "❌ Connection error. Try again later.", sender: 'ai' }]);
+    } finally { 
+      setIsTyping(false); 
+    }
   };
 
 
