@@ -1,50 +1,131 @@
-import React, { useState, useEffect } from 'react';
-import Paywall from './Paywall';
+import React, { useState, useEffect, useRef } from 'react';
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import Groq from "groq-sdk";
+import { supabase } from './supabaseclient';
 import Login from './Login';
-import { supabase } from './supabaseclient'; 
+import Paywall from './Paywall';
+import ReactMarkdown from 'react-markdown';
+
+// Groq setup for Llama-3.1
+const groq = new Groq({
+  apiKey: import.meta.env.VITE_GROQ_API_KEY,
+  dangerouslyAllowBrowser: true,
+});
 
 const App = () => {
+  // --- AUTH & LANDING PAGE STATE ---
+  const [session, setSession] = useState(null);
   const [showPaywall, setShowPaywall] = useState(false);
   const [showAuthForm, setShowAuthForm] = useState(false);
-  const [session, setSession] = useState(null); 
 
-  // AI Dashboard States
-  const [idea, setIdea] = useState('');
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [hooks, setHooks] = useState([]);
-  const [isRecording, setIsRecording] = useState(false);
+  // --- DASHBOARD STATE (From Original) ---
+  const [inputText, setInputText] = useState('');
+  const [messages, setMessages] = useState([]);
+  const [chats, setChats] = useState([]);
+  const [activeChatId, setActiveChatId] = useState(null);
+  const [isTyping, setIsTyping] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
+  const [userBio, setUserBio] = useState(localStorage.getItem('userBio') || '');
+  const [showSettings, setShowSettings] = useState(false);
+  const [isListening, setIsListening] = useState(false);
 
   // 🛡️ THE BULLETPROOF SWITCH 🛡️
+  // CHANGE TO `true` TEMPORARILY IF YOU WANT TO RECORD ON LAPTOP BROWSER!
   const isNativeApp = typeof window !== 'undefined' && !!window.Capacitor;
 
-  // 🕵️ THE VIP BOUNCER
+  // --- NATIVE VOICE RECOGNITION ---
+  const startSpeech = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) return alert("Voice not supported on this browser.");
+    const recognition = new SpeechRecognition();
+    recognition.onstart = () => setIsListening(true);
+    recognition.onresult = (e) => {
+      setInputText(prev => prev + " " + e.results[0][0].transcript);
+      setIsListening(false);
+    };
+    recognition.start();
+  };
+
+  // --- USE EFFECTS ---
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-    });
+    theme === 'dark' ? document.documentElement.classList.add('dark') : document.documentElement.classList.remove('dark');
+    localStorage.setItem('theme', theme);
+  }, [theme]);
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
-
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setSession(session));
     return () => subscription.unsubscribe();
   }, []);
 
-  // FAKE GENERATOR JUST FOR YOUR SCREEN RECORDING REEL 🎥
-  const handleGenerateHooks = () => {
-    if (!idea) return;
-    setIsGenerating(true);
-    setHooks([]);
-    
-    // Fakes a 2-second loading animation for the Reel
-    setTimeout(() => {
-      setHooks([
-        "❌ Stop doing [Blank] if you want to [Goal]. Do this instead...",
-        "🤫 The dark psychology secret nobody tells you about [Topic].",
-        "🤯 I tried [Strategy] for 30 days and my mind is blown."
-      ]);
-      setIsGenerating(false);
-    }, 2000);
+  useEffect(() => { 
+    if (!session) return;
+    const fetchChats = async () => {
+      const { data } = await supabase.from('chats').select('*').eq('user_id', session.user.id).order('created_at', { ascending: false });
+      if (data) setChats(data);
+    };
+    fetchChats(); 
+  }, [session]);
+
+  useEffect(() => {
+    if (!activeChatId) { 
+      if (session) setMessages([{ text: `**Welcome back!** 🚀 Ready to dominate today?`, sender: 'ai' }]);
+      return; 
+    }
+    const fetchMessages = async () => {
+      const { data } = await supabase.from('messages').select('*').eq('chat_id', activeChatId).order('created_at', { ascending: true });
+      if (data) setMessages(data);
+    };
+    fetchMessages();
+  }, [activeChatId, session]);
+
+  const messagesEndRef = useRef(null);
+  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, isTyping]);
+
+  // --- Llama-3.1 API CALL ---
+  const handleSend = async () => {
+    if (inputText.trim() === '' || !session) return;
+    await Haptics.impact({ style: ImpactStyle.Light });
+    const userText = inputText;
+    const currentUserId = session.user.id;
+    setInputText('');
+
+    let currentChatId = activeChatId;
+    if (!currentChatId) {
+      const { data: newChat } = await supabase.from('chats').insert([{ user_id: currentUserId, title: userText.substring(0, 30) }]).select().single();
+      if (newChat) { currentChatId = newChat.id; setActiveChatId(newChat.id); setChats(prev => [newChat, ...prev]); }
+    }
+
+    setMessages(prev => [...prev, { text: userText, sender: 'user' }]);
+    setIsTyping(true);
+    await supabase.from('messages').insert([{ text: userText, sender: 'user', user_id: currentUserId, chat_id: currentChatId }]);
+
+    try {
+      const stream = await groq.chat.completions.create({
+        messages: [
+          { role: "system", content: `You are a Viral Growth Coach. User Bio: ${userBio}. Be concise, use Markdown, and bold headers.` },
+          { role: "user", content: userText }
+        ],
+        model: "llama-3.1-8b-instant",
+        stream: true,
+      });
+
+      let fullAiText = "";
+      setMessages(prev => [...prev, { text: "", sender: 'ai' }]); 
+
+      for await (const chunk of stream) {
+        const content = chunk.choices[0]?.delta?.content || "";
+        fullAiText += content;
+        setMessages(prev => {
+          const updated = [...prev];
+          updated[updated.length - 1].text = fullAiText;
+          return updated;
+        });
+      }
+      
+      await supabase.from('messages').insert([{ text: fullAiText, sender: 'ai', user_id: currentUserId, chat_id: currentChatId }]);
+    } catch (e) { console.error(e); } finally { setIsTyping(false); }
   };
 
 
@@ -53,94 +134,112 @@ const App = () => {
   // ==========================================
   if (isNativeApp) {
     
-    // 🔥 IF LOGGED IN: SHOW THE AI DASHBOARD 🔥
-    if (session) {
+    // 🔒 NOT LOGGED IN? SHOW WHITE SIGNUP SCREEN
+    if (!session) {
       return (
-        <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-start p-6 font-sans">
-          
-          {/* Header */}
-          <div className="w-full max-w-md flex justify-between items-center mb-8 mt-4">
-             <div className="flex items-center gap-3">
-               <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-lg">C</div>
-               <h2 className="text-xl font-black text-gray-900 tracking-tight">CreatorCoach</h2>
-             </div>
-             <button onClick={() => supabase.auth.signOut()} className="text-xs font-bold text-gray-400 underline">Log Out</button>
+        <div className="min-h-screen bg-white font-sans flex flex-col items-center justify-center p-8 text-center">
+          <div className="mb-12">
+            <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white font-black text-3xl shadow-xl mx-auto mb-4">C</div>
+            <h1 className="text-3xl font-black italic tracking-tighter text-gray-900">CreatorCoach</h1>
+            <p className="text-blue-600 font-bold text-sm uppercase tracking-widest mt-2">Your AI Viral Growth Partner</p>
           </div>
-
-          {/* AI Generator Box */}
-          <div className="w-full max-w-md bg-white rounded-[2rem] p-6 shadow-xl border border-gray-100 mb-6">
-             <div className="flex justify-between items-center mb-6">
-                <h3 className="font-bold text-gray-800">Generate Hook</h3>
-                <span className="bg-blue-50 text-blue-600 text-[10px] px-3 py-1 rounded-full font-black uppercase tracking-widest border border-blue-100">Llama-3.1-8b</span>
-             </div>
-
-             <div className="relative mb-6">
-                <textarea 
-                  value={idea}
-                  onChange={(e) => setIdea(e.target.value)}
-                  placeholder="What is your video about? e.g. How to get rich in your 20s..."
-                  className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-4 min-h-[120px] text-gray-800 outline-none focus:ring-2 focus:ring-blue-500 transition-all resize-none"
-                />
-                
-                {/* Voice-to-Idea Mic Button */}
-                <button 
-                  onClick={() => setIsRecording(!isRecording)}
-                  className={`absolute bottom-3 right-3 p-2.5 rounded-full transition-all shadow-sm ${isRecording ? 'bg-red-500 text-white animate-pulse' : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50'}`}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" /></svg>
-                </button>
-             </div>
-
-             <button 
-               onClick={handleGenerateHooks}
-               disabled={isGenerating || !idea}
-               className="w-full bg-blue-600 text-white font-black py-4 rounded-xl shadow-[0_0_20px_-5px_rgba(37,99,235,0.5)] active:scale-95 transition-all disabled:opacity-70 flex justify-center items-center gap-2"
-             >
-               {isGenerating ? (
-                 <span className="animate-pulse">Analyzing Audience...</span>
-               ) : (
-                 'Generate Viral Hooks 🚀'
-               )}
-             </button>
-          </div>
-
-          {/* Results Area */}
-          {hooks.length > 0 && (
-            <div className="w-full max-w-md space-y-4 animate-[fadeIn_0.5s_ease-out]">
-              <h4 className="font-black text-gray-800 ml-2">Top Performing Hooks:</h4>
-              {hooks.map((hook, index) => (
-                <div key={index} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex gap-4 items-start cursor-copy hover:border-blue-300 transition-all">
-                  <div className="bg-blue-100 text-blue-600 w-8 h-8 rounded-full flex items-center justify-center font-black shrink-0">{index + 1}</div>
-                  <p className="text-gray-700 font-medium leading-relaxed">{hook}</p>
-                </div>
-              ))}
+  
+          {!showAuthForm ? (
+            <div className="w-full max-w-sm space-y-4">
+              <button onClick={() => setShowAuthForm(true)} className="w-full bg-blue-600 text-white font-black py-5 rounded-2xl text-xl shadow-lg active:scale-95 transition-all">Sign Up</button>
+              <button onClick={() => setShowAuthForm(true)} className="w-full bg-gray-100 text-gray-900 font-black py-5 rounded-2xl text-xl active:scale-95 transition-all">Login</button>
+            </div>
+          ) : (
+            <div className="w-full max-w-sm">
+              <Login />
+              <button onClick={() => setShowAuthForm(false)} className="w-full mt-4 text-gray-400 font-bold text-sm underline">Go Back</button>
             </div>
           )}
-
         </div>
       );
     }
 
-    // 🔒 IF NOT LOGGED IN: SHOW LOGIN SCREEN 🔒
+    // 🔥 LOGGED IN? SHOW YOUR REAL LLAMA-3.1 DASHBOARD 🔥
     return (
-      <div className="min-h-screen bg-white font-sans flex flex-col items-center justify-center p-8 text-center">
-        <div className="mb-12">
-          <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white font-black text-3xl shadow-xl mx-auto mb-4">C</div>
-          <h1 className="text-3xl font-black italic tracking-tighter text-gray-900">CreatorCoach</h1>
-          <p className="text-blue-600 font-bold text-sm uppercase tracking-widest mt-2">Your AI Viral Growth Partner</p>
-        </div>
-
-        {!showAuthForm ? (
-          <div className="w-full max-w-sm space-y-4">
-            <button onClick={() => setShowAuthForm(true)} className="w-full bg-blue-600 text-white font-black py-5 rounded-2xl text-xl shadow-lg active:scale-95 transition-all">Sign Up</button>
-            <button onClick={() => setShowAuthForm(true)} className="w-full bg-gray-100 text-gray-900 font-black py-5 rounded-2xl text-xl active:scale-95 transition-all">Login</button>
-          </div>
-        ) : (
-          <div className="w-full max-w-sm">
-            <Login />
-            <button onClick={() => setShowAuthForm(false)} className="w-full mt-4 text-gray-400 font-bold text-sm underline">Go Back</button>
+      <div className={`h-[100dvh] w-full flex font-sans overflow-hidden transition-colors ${theme === 'dark' ? 'bg-gray-950 text-white' : 'bg-white text-gray-900'}`}>
+        
+        {/* SETTINGS MODAL */}
+        {showSettings && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <div className={`w-full max-w-sm rounded-3xl p-6 shadow-2xl ${theme === 'dark' ? 'bg-gray-900' : 'bg-white'}`}>
+               <h2 className="text-xl font-black mb-4">Creator Profile</h2>
+               <p className="text-xs text-gray-500 mb-2">Tell the Coach about your niche/goals:</p>
+               <textarea 
+                 value={userBio} 
+                 onChange={(e) => { setUserBio(e.target.value); localStorage.setItem('userBio', e.target.value); }}
+                 className="w-full h-32 p-3 rounded-xl bg-gray-100 dark:bg-gray-800 border-none outline-none text-sm"
+                 placeholder="e.g. I am a fitness coach on Instagram trying to reach 10k followers..."
+               />
+               <button onClick={() => setShowSettings(false)} className="w-full mt-4 bg-blue-600 text-white py-3 rounded-xl font-bold">Save Profile</button>
+               <button onClick={() => supabase.auth.signOut()} className="w-full mt-4 text-red-500 text-sm font-bold underline">Log Out of App</button>
+            </div>
           </div>
         )}
+  
+        {/* HISTORY DRAWER */}
+        {showHistory && (
+          <div className="fixed inset-0 z-50 flex">
+            <div className="w-72 bg-gray-900 text-white p-4 shadow-2xl flex flex-col">
+              <div className="flex justify-between items-center mb-6">
+                 <h2 className="font-bold">History</h2>
+                 <button onClick={() => setShowHistory(false)}>✕</button>
+              </div>
+              <button onClick={() => { setActiveChatId(null); setShowHistory(false); }} className="w-full bg-blue-600 py-3 rounded-xl font-bold mb-4">+ New Chat</button>
+              <div className="flex-1 overflow-y-auto space-y-2">
+                 {chats.map(chat => (
+                   <div key={chat.id} onClick={() => { setActiveChatId(chat.id); setShowHistory(false); }} className={`p-3 rounded-lg text-sm truncate cursor-pointer ${activeChatId === chat.id ? 'bg-gray-800' : 'text-gray-400 hover:bg-gray-800/50'}`}>{chat.title}</div>
+                 ))}
+              </div>
+            </div>
+            <div className="flex-1 bg-black/40" onClick={() => setShowHistory(false)}></div>
+          </div>
+        )}
+  
+        <main className="flex-1 flex flex-col h-full relative">
+          <header className={`border-b p-4 flex justify-between items-center z-10 pt-safe ${theme === 'dark' ? 'bg-gray-950/80 border-gray-800' : 'bg-white/80'} backdrop-blur-md`}>
+            <div className="flex items-center gap-3">
+               <button onClick={() => setShowHistory(true)} className="text-2xl">☰</button>
+               <h1 className="text-xl font-black text-blue-600">CreatorCoach</h1>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setShowSettings(true)} className="text-xl p-2">⚙️</button>
+              <button onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')} className="text-xl p-2">{theme === 'light' ? '🌙' : '☀️'}</button>
+            </div>
+          </header>
+  
+          <div className="flex-1 overflow-y-auto px-4 pt-6 pb-32">
+            <div className="max-w-2xl mx-auto space-y-6">
+              {messages.map((msg, index) => (
+                <div key={index} className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}>
+                  <div className={`rounded-2xl px-5 py-3 max-w-[95%] shadow-sm ${msg.sender === 'user' ? 'bg-blue-600 text-white' : theme === 'dark' ? 'bg-gray-900 border border-gray-800 text-gray-100' : 'bg-gray-100 text-gray-800'}`}>
+                    <ReactMarkdown className="prose prose-sm dark:prose-invert text-[16px] leading-relaxed overflow-hidden">{msg.text}</ReactMarkdown>
+                  </div>
+                </div>
+              ))}
+              {isTyping && <div className="flex gap-1 pl-2"><div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce"></div><div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div><div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div></div>}
+              <div ref={messagesEndRef} />
+            </div>
+          </div>
+  
+          <footer className={`absolute bottom-0 w-full p-4 pb-safe ${theme === 'dark' ? 'bg-gray-950/90' : 'bg-white/90'} backdrop-blur-md`}>
+            <div className="max-w-2xl mx-auto">
+              <div className="flex gap-2 items-center">
+                <button onClick={startSpeech} className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors shadow-sm ${isListening ? 'bg-red-500 text-white animate-pulse' : 'bg-gray-200 text-gray-600 dark:bg-gray-800 dark:text-gray-300'}`}>
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" /></svg>
+                </button>
+                <input value={inputText} onChange={(e) => setInputText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSend()} placeholder="What's the goal today?" className={`flex-1 border-none rounded-2xl px-5 py-4 outline-none text-[16px] shadow-sm ${theme === 'dark' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-900'}`} />
+                <button onClick={handleSend} className="bg-blue-600 text-white w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg active:scale-95 transition-transform">
+                   <svg className="w-6 h-6 rotate-90" fill="currentColor" viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/></svg>
+                </button>
+              </div>
+            </div>
+          </footer>
+        </main>
       </div>
     );
   }
